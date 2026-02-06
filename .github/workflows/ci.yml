@@ -68,15 +68,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Compile ThingsBoard
-        run: mvn clean compile -DskipTests -T 1C -q -pl '!ui-ngx'
-
-      - name: Create UI stub for application build
+      - name: Create UI stub (ui-ngx requires frontend toolchain)
         run: |
           mkdir -p ~/.m2/repository/org/thingsboard/ui-ngx/4.3.0-RC
           cp ui-ngx/pom.xml ~/.m2/repository/org/thingsboard/ui-ngx/4.3.0-RC/ui-ngx-4.3.0-RC.pom
           mkdir -p /tmp/empty-jar
           jar cf ~/.m2/repository/org/thingsboard/ui-ngx/4.3.0-RC/ui-ngx-4.3.0-RC.jar -C /tmp/empty-jar .
+
+      - name: Compile ThingsBoard
+        run: mvn clean compile -DskipTests -T 1C -q -pl '!ui-ngx,!msa/web-ui'
+
+      - name: Install dependencies
+        run: mvn install -DskipTests -T 1C -q -pl '!ui-ngx,!msa/web-ui'
 
       - name: Run DeviceUptimeService unit tests
         run: mvn test -f application/pom.xml -Dtest="org.thingsboard.server.service.uptime.DeviceUptimeServiceTest"
@@ -94,9 +97,7 @@ jobs:
           retention-days: 14
 
       - name: Package application
-        run: |
-          mvn install -DskipTests -T 1C -pl '!ui-ngx' -q
-          mvn package -DskipTests -pl application -q
+        run: mvn package -DskipTests -pl application -q
 
       - name: Launch ThingsBoard (smoke test)
         run: |
