@@ -116,7 +116,9 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-ts-latest-psql.sql
           PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-functions.sql
           PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-views.sql
-          echo "Database schema created successfully."
+          echo "Loading system data..."
+          PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/test/resources/sql/system-data.sql
+          echo "Database initialized successfully."
 
       - name: Deploy and launch ThingsBoard
         run: |
