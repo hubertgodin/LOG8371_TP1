@@ -1,19 +1,3 @@
-#
-# Copyright © 2016-2026 The Thingsboard Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 name: ThingsBoard CI Pipeline
 
 on:
@@ -26,7 +10,7 @@ jobs:
   build-and-test:
     name: Build, Test & Package
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     services:
       postgres:
@@ -84,8 +68,12 @@ jobs:
       - name: Run DeviceUptimeService unit tests
         run: mvn test -f application/pom.xml -Dtest="org.thingsboard.server.service.uptime.DeviceUptimeServiceTest"
 
-      - name: Run all application unit tests
-        run: mvn test -f application/pom.xml -Dmaven.test.failure.ignore=true
+      - name: Run application module tests with JaCoCo
+        run: mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test surefire-report:report org.jacoco:jacoco-maven-plugin:0.8.12:report -f application/pom.xml -Dmaven.test.failure.ignore=true
+        continue-on-error: true
+
+      - name: Run DAO module tests with JaCoCo
+        run: mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test surefire-report:report org.jacoco:jacoco-maven-plugin:0.8.12:report -f dao/pom.xml -Dmaven.test.failure.ignore=true -Dsurefire.excludes="**/RedisClusterSqlTestSuite.java,**/RedisSqlTestSuite.java,**/RedisJUnit5Test.java,**/NoSqlDaoServiceTestSuite.java,**/TimescaleDaoServiceTestSuite.java,**/TimeseriesServiceNoSqlTest.java,**/TimeseriesServiceNoSqlSetNullEnabledTest.java,**/CassandraBaseTimeseries*.java,**/CassandraPartitionsCacheTest.java"
         continue-on-error: true
 
       - name: Upload test reports
@@ -93,7 +81,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-reports
-          path: '**/target/surefire-reports/*.xml'
+          path: |
+            **/target/surefire-reports/*.xml
+            **/target/reports/surefire.html
+            **/target/site/jacoco/index.html
           retention-days: 14
 
       - name: Package application
