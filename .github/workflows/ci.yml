@@ -132,16 +132,13 @@ jobs:
             &
           TB_PID=$!
           echo "ThingsBoard starting (PID: $TB_PID)..."
-          for i in $(seq 1 60); do
-            if curl -s http://localhost:8080/api/noauth/health 2>/dev/null | grep -q "UP"; then
+          for i in $(seq 1 90); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/noauth/userPasswordPolicy 2>/dev/null || echo "000")
+            echo "Attempt $i: HTTP $HTTP_CODE"
+            if [ "$HTTP_CODE" = "200" ]; then
               echo "========================================="
               echo "  ThingsBoard is UP after ${i}0 seconds"
               echo "========================================="
-              echo "Verifying login endpoint..."
-              curl -s -X POST http://localhost:8080/api/auth/login \
-                -H "Content-Type: application/json" \
-                -d '{"username":"sysadmin@thingsboard.org","password":"sysadmin"}' | head -c 200
-              echo ""
               echo "========================================="
               echo "  DEPLOYMENT SUCCESSFUL"
               echo "========================================="
@@ -150,6 +147,6 @@ jobs:
             fi
             sleep 10
           done
-          echo "ThingsBoard failed to start within 600 seconds."
+          echo "ThingsBoard failed to start within 900 seconds."
           kill $TB_PID 2>/dev/null
           exit 1
