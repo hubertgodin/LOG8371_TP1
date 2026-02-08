@@ -50,7 +50,6 @@ jobs:
       SPRING_DATASOURCE_PASSWORD: postgres
 
     steps:
-      # ==================== CI: Build ====================
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -82,7 +81,6 @@ jobs:
       - name: Install dependencies
         run: mvn install -DskipTests -T 1C -q -pl '!ui-ngx,!monitoring,!msa/web-ui,!msa/js-executor,!msa/tb-node,!msa/tb,!msa/transport,!msa/vc-executor,!msa/vc-executor-docker,!msa/monitoring,!msa/edqs'
 
-      # ==================== CI: Unit Tests ====================
       - name: Run DeviceUptimeService unit tests
         run: mvn test -f application/pom.xml -Dtest="org.thingsboard.server.service.uptime.DeviceUptimeServiceTest" -DargLine=""
 
@@ -105,22 +103,20 @@ jobs:
             **/target/site/jacoco/index.html
           retention-days: 14
 
-      # ==================== CI: Package ====================
       - name: Package application
         run: mvn package -DskipTests -pl application -q
 
-      # ==================== CD: Deploy & Launch ====================
       - name: Initialize ThingsBoard database
         run: |
-          java -cp application/target/thingsboard-*-boot.jar \
-            -Dloader.main=org.thingsboard.server.ThingsboardInstallApplication \
-            -Dspring.datasource.url=$SPRING_DATASOURCE_URL \
-            -Dspring.datasource.username=$SPRING_DATASOURCE_USERNAME \
-            -Dspring.datasource.password=$SPRING_DATASOURCE_PASSWORD \
-            -Dinstall.load_demo=true \
-            org.springframework.boot.loader.launch.PropertiesLauncher \
-            --install
-        continue-on-error: true
+          echo "Creating ThingsBoard database schema..."
+          PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-entities.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-entities-idx.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-entities-idx-psql-addon.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-ts-psql.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-ts-latest-psql.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-functions.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d thingsboard -f dao/src/main/resources/sql/schema-views.sql
+          echo "Database schema created successfully."
 
       - name: Deploy and launch ThingsBoard
         run: |
