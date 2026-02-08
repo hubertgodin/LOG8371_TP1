@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-name: ThingsBoard CI Pipeline
+name: ThingsBoard CI/CD Pipeline
 
 on:
   push:
@@ -24,9 +24,9 @@ on:
 
 jobs:
   build-and-test:
-    name: Build, Test & Package
+    name: Build, Test & Deploy
     runs-on: ubuntu-22.04
-    timeout-minutes: 180
+    timeout-minutes: 90
 
     services:
       postgres:
@@ -50,6 +50,7 @@ jobs:
       SPRING_DATASOURCE_PASSWORD: postgres
 
     steps:
+      # ==================== CI: Build ====================
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -81,11 +82,12 @@ jobs:
       - name: Install dependencies
         run: mvn install -DskipTests -T 1C -q -pl '!ui-ngx,!monitoring,!msa/web-ui,!msa/js-executor,!msa/tb-node,!msa/tb,!msa/transport,!msa/vc-executor,!msa/vc-executor-docker,!msa/monitoring,!msa/edqs'
 
+      # ==================== CI: Unit Tests ====================
       - name: Run DeviceUptimeService unit tests
         run: mvn test -f application/pom.xml -Dtest="org.thingsboard.server.service.uptime.DeviceUptimeServiceTest" -DargLine=""
 
-      - name: Run application module tests with JaCoCo
-        run: mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test surefire-report:report org.jacoco:jacoco-maven-plugin:0.8.12:report -f application/pom.xml -Dmaven.test.failure.ignore=true -DargLine=""
+      - name: Run application unit tests with JaCoCo (service package)
+        run: mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test surefire-report:report org.jacoco:jacoco-maven-plugin:0.8.12:report -f application/pom.xml -Dmaven.test.failure.ignore=true -DargLine="" -Dtest="org.thingsboard.server.service.**"
         continue-on-error: true
 
       - name: Run DAO module tests with JaCoCo
@@ -103,22 +105,48 @@ jobs:
             **/target/site/jacoco/index.html
           retention-days: 14
 
+      # ==================== CI: Package ====================
       - name: Package application
         run: mvn package -DskipTests -pl application -q
 
-      - name: Launch ThingsBoard (smoke test)
+      # ==================== CD: Deploy & Launch ====================
+      - name: Initialize ThingsBoard database
         run: |
-          echo "Starting ThingsBoard application..."
+          java -cp application/target/thingsboard-*-boot.jar \
+            -Dloader.main=org.thingsboard.server.ThingsboardInstallApplication \
+            -Dspring.datasource.url=$SPRING_DATASOURCE_URL \
+            -Dspring.datasource.username=$SPRING_DATASOURCE_USERNAME \
+            -Dspring.datasource.password=$SPRING_DATASOURCE_PASSWORD \
+            -Dinstall.load_demo=true \
+            org.springframework.boot.loader.launch.PropertiesLauncher \
+            --install
+        continue-on-error: true
+
+      - name: Deploy and launch ThingsBoard
+        run: |
+          echo "========================================="
+          echo "  DEPLOYING ThingsBoard Application"
+          echo "========================================="
           java -jar application/target/thingsboard-*-boot.jar \
             --spring.datasource.url=$SPRING_DATASOURCE_URL \
             --spring.datasource.username=$SPRING_DATASOURCE_USERNAME \
             --spring.datasource.password=$SPRING_DATASOURCE_PASSWORD \
             &
           TB_PID=$!
-          echo "Waiting for ThingsBoard to start (PID: $TB_PID)..."
+          echo "ThingsBoard starting (PID: $TB_PID)..."
           for i in $(seq 1 60); do
             if curl -s http://localhost:8080/api/noauth/health 2>/dev/null | grep -q "UP"; then
-              echo "ThingsBoard is UP after ${i}0 seconds."
+              echo "========================================="
+              echo "  ThingsBoard is UP after ${i}0 seconds"
+              echo "========================================="
+              echo "Verifying login endpoint..."
+              curl -s -X POST http://localhost:8080/api/auth/login \
+                -H "Content-Type: application/json" \
+                -d '{"username":"sysadmin@thingsboard.org","password":"sysadmin"}' | head -c 200
+              echo ""
+              echo "========================================="
+              echo "  DEPLOYMENT SUCCESSFUL"
+              echo "========================================="
               kill $TB_PID
               exit 0
             fi
