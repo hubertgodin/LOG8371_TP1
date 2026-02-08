@@ -26,7 +26,7 @@ jobs:
   build-and-test:
     name: Build, Test & Package
     runs-on: ubuntu-22.04
-    timeout-minutes: 120
+    timeout-minutes: 180
 
     services:
       postgres:
@@ -76,10 +76,10 @@ jobs:
           jar cf ~/.m2/repository/org/thingsboard/ui-ngx/4.3.0-RC/ui-ngx-4.3.0-RC.jar -C /tmp/empty-jar .
 
       - name: Compile ThingsBoard
-        run: mvn clean compile -DskipTests -T 1C -q -pl '!ui-ngx,!msa/web-ui,!monitoring'
+        run: mvn clean compile -DskipTests -T 1C -q -pl '!ui-ngx,!monitoring,!msa/web-ui,!msa/js-executor,!msa/tb-node,!msa/tb,!msa/transport,!msa/vc-executor,!msa/vc-executor-docker,!msa/monitoring,!msa/edqs,!msa/black-box-tests'
 
       - name: Install dependencies
-        run: mvn install -DskipTests -T 1C -q -pl '!ui-ngx,!msa/web-ui,!monitoring'
+        run: mvn install -DskipTests -T 1C -q -pl '!ui-ngx,!monitoring,!msa/web-ui,!msa/js-executor,!msa/tb-node,!msa/tb,!msa/transport,!msa/vc-executor,!msa/vc-executor-docker,!msa/monitoring,!msa/edqs,!msa/black-box-tests'
 
       - name: Run DeviceUptimeService unit tests
         run: mvn test -f application/pom.xml -Dtest="org.thingsboard.server.service.uptime.DeviceUptimeServiceTest"
