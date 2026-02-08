@@ -82,14 +82,14 @@ jobs:
         run: mvn install -DskipTests -T 1C -q -pl '!ui-ngx,!monitoring,!msa/web-ui,!msa/js-executor,!msa/tb-node,!msa/tb,!msa/transport,!msa/vc-executor,!msa/vc-executor-docker,!msa/monitoring,!msa/edqs'
 
       - name: Run DeviceUptimeService unit tests
-        run: mvn test -f application/pom.xml -Dtest="org.thingsboard.server.service.uptime.DeviceUptimeServiceTest"
+        run: mvn test -f application/pom.xml -Dtest="org.thingsboard.server.service.uptime.DeviceUptimeServiceTest" -DargLine=""
 
       - name: Run application module tests with JaCoCo
-        run: mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test surefire-report:report org.jacoco:jacoco-maven-plugin:0.8.12:report -f application/pom.xml -Dmaven.test.failure.ignore=true
+        run: mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test surefire-report:report org.jacoco:jacoco-maven-plugin:0.8.12:report -f application/pom.xml -Dmaven.test.failure.ignore=true -DargLine=""
         continue-on-error: true
 
       - name: Run DAO module tests with JaCoCo
-        run: mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test surefire-report:report org.jacoco:jacoco-maven-plugin:0.8.12:report -f dao/pom.xml -Dmaven.test.failure.ignore=true -Dsurefire.excludes="**/RedisClusterSqlTestSuite.java,**/RedisSqlTestSuite.java,**/RedisJUnit5Test.java,**/NoSqlDaoServiceTestSuite.java,**/TimescaleDaoServiceTestSuite.java,**/TimeseriesServiceNoSqlTest.java,**/TimeseriesServiceNoSqlSetNullEnabledTest.java,**/CassandraBaseTimeseries*.java,**/CassandraPartitionsCacheTest.java"
+        run: mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test surefire-report:report org.jacoco:jacoco-maven-plugin:0.8.12:report -f dao/pom.xml -Dmaven.test.failure.ignore=true -DargLine="" -Dsurefire.excludes="**/RedisClusterSqlTestSuite.java,**/RedisSqlTestSuite.java,**/RedisJUnit5Test.java,**/NoSqlDaoServiceTestSuite.java,**/TimescaleDaoServiceTestSuite.java,**/TimeseriesServiceNoSqlTest.java,**/TimeseriesServiceNoSqlSetNullEnabledTest.java,**/CassandraBaseTimeseries*.java,**/CassandraPartitionsCacheTest.java"
         continue-on-error: true
 
       - name: Upload test reports
